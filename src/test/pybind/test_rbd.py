@@ -133,6 +133,9 @@ def check_default_params(format, order=None, features=None, stripe_count=None,
             rados.conf_set('rbd_default_stripe_count', str(stripe_count or 0))
         if stripe_unit is not None:
             rados.conf_set('rbd_default_stripe_unit', str(stripe_unit or 0))
+        feature_data_pool = 0
+        if rados.conf_get('rbd_default_data_pool') is not None:
+            feature_data_pool = 128
         image_name = get_temp_image_name()
         if exception is None:
             RBD().create(ioctx, image_name, IMG_SIZE)
@@ -145,8 +148,12 @@ def check_default_params(format, order=None, features=None, stripe_count=None,
                     eq(expected_order, actual_order)
 
                     expected_features = features
-                    if expected_features is None or format == 1:
-                        expected_features = 0 if format == 1 else 61
+                    if format == 1:
+                        expected_features = 0
+                    elif expected_features is None:
+                        expected_features = 61 | feature_data_pool
+                    else:
+                        expected_feature |= feature_data_pool
                     eq(expected_features, image.features())
 
                     expected_stripe_count = stripe_count
